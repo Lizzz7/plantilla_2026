@@ -150,3 +150,45 @@ Medido en una máquina de 2 núcleos con 8 GB: **4.4 M filas (384 MB crudos) →
 | **Data Scientist** | revisa el embudo, las fugas y la regularización; entrena el modelo | modelo + Gini |
 | **Negocio/BI** | revisa `perfil_columnas.csv` (¿qué significa cada columna?) y las gráficas de rubros | historia de negocio |
 | **Líder/Presentador** | decide el TARGET y el corte con el enunciado; usa `diccionario_variables.csv` | presentación |
+
+## Trabajo en equipo con GitHub
+
+### Preparar el entorno
+
+Cada integrante debe aceptar la invitación al repositorio y clonar el proyecto. Se recomienda trabajar en un entorno virtual e instalar las dependencias según las instrucciones del equipo. No compartan credenciales ni suban datos confidenciales del BCP o del concurso.
+
+```bash
+git clone https://github.com/Lizzz7/plantilla_datafest.git
+cd plantilla_datafest
+git switch -c tipo/descripcion-corta
+```
+
+Usen ramas descriptivas, por ejemplo `feat/validacion-datos`, `fix/fechas-ingesta` o `docs/instrucciones`. Eviten trabajar directamente en `main`.
+
+### Flujo de tareas
+
+1. Abran un **Issue por tarea**, indicando responsable, contexto y qué significa que esté terminada.
+2. Muevan las tareas por el tablero: **Pendiente → En curso → En revisión → Terminado**.
+3. Cada integrante trabaja en su rama y hace commits pequeños con mensajes claros.
+4. Al terminar, abre un **pull request** hacia `main`, enlaza el Issue y explica qué cambió y cómo lo probó.
+5. Otra persona revisa el cambio; resuelvan comentarios y comprueben que no haya datos, secretos o archivos generados antes de incorporarlo.
+6. Mantengan `main` integrado y ejecutable; comuniquen conflictos pronto y coordinen antes de modificar los mismos módulos.
+
+### Reparto sugerido
+
+Adapten estos frentes al tamaño del equipo; una persona puede cubrir más de uno:
+
+| Frente | Archivos / foco | Resultado esperado |
+|---|---|---|
+| Datos e ingesta | `pipeline/ingesta.py`, `limpieza.py`, `llaves.py` | datos cargados, conciliados y con calidad documentada |
+| Variables | `pipeline/features.py`, `seleccion.py` | variables útiles, interpretables y sin fuga de información |
+| Modelado | `pipeline/modelado/`, `run_modelo.py` | modelos evaluados con validación y métricas reproducibles |
+| Negocio y entrega | `README.md`, `docs/`, presentación | problema, hallazgos, impacto, limitaciones y demo claros |
+| Coordinación e integración | Issues, pull requests y pruebas de punta a punta | cambios revisados y proyecto integrado para la entrega |
+
+### Reproducibilidad y entrega
+
+- Registren para cada experimento la configuración, el corte temporal, las métricas y la versión del código; usen semillas cuando corresponda.
+- Documenten aquí los pasos para instalar y ejecutar el proyecto desde un entorno limpio cuando el equipo los haya verificado.
+- Antes de entregar, ejecuten el flujo completo, revisen las salidas y preparen una demo que explique **problema → solución → resultados → valor para el negocio → limitaciones**.
+- Confirmen las bases del DataFest: fechas, formato de entrega, métrica de evaluación y reglas sobre uso y publicación de datos. No publiquen datos del concurso sin autorización.
