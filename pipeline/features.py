@@ -160,6 +160,9 @@ def detectar_eventos(perfil, rel, ent, gr):
                             cat=next(iter(_cols(perfil, t, "CATEGORIA", "rubro").columna), None),
                             cp=cps[0] if cps else None,
                             moneda=next(iter(_cols(perfil, t, "CATEGORIA", "moneda").columna), None))
+            # otros números del evento que NO son montos (p.ej. dias_plazo): antes se perdían
+            ya = set(specs[t]["montos"])
+            specs[t]["otros"] = [c for c in _cols(perfil, t, "NUMERO").columna if c not in ya][:5]
         else:
             specs[t] = dict(tipo="agregado", id=link)
     return specs
@@ -181,7 +184,11 @@ def sql_atributos(t, spec, perfil, path):
         else:
             sel.append(f"{_q(c)} AS {_q(nombre)}")
             dic.append((nombre, t, f"{c} tal cual ({d.lower()})"))
-        if r.decision.endswith("+IND"):
+        if r.decision.endswith("+IND") and d == "FECHA":
+            # una fecha POSTERIOR al corte no existía el día de decidir: el indicador solo cuenta las anteriores
+            sel.append(f"CAST(coalesce({_q(c)} < DATE '{C.FECHA_CORTE}', false) AS TINYINT) AS \"{p}__tiene_{c}\"")
+            dic.append((f"{p}__tiene_{c}", t, f"1 si {c} tiene dato ANTES del corte"))
+        elif r.decision.endswith("+IND"):
             sel.append(f'"tiene_{c}" AS "{p}__tiene_{c}"')
             dic.append((f"{p}__tiene_{c}", t, f"1 si {c} tiene dato"))
     sql = f"SELECT {_q(spec['id'])} AS id, {', '.join(sel)} FROM '{path.as_posix()}' QUALIFY row_number() OVER (PARTITION BY {_q(spec['id'])}) = 1"
@@ -217,8 +224,12 @@ def sql_eventos(t, spec, path, specs_target=None):
     dic += [(f"{p}__recencia_dias", t, "días desde el último evento"),
             (f"{p}__antiguedad_dias", t, "días desde el primer evento"),
             (f"{p}__meses_activos", t, "meses con al menos un evento")]
+    for o in spec.get("otros") or []:  # números que no son montos: sin conversión de moneda
+        sel += [f"avg({_q(o)}) AS {p}__{o}_prom", f"max({_q(o)}) AS {p}__{o}_max"]
+        dic += [(f"{p}__{o}_prom", t, f"promedio de {o}"), (f"{p}__{o}_max", t, f"máximo de {o}")]
     if spec.get("fecha2"):  # dos fechas por evento (emisión/vencimiento/pago) -> plazo en días
-        d2 = f"date_diff('day', {f}, {_q(spec['fecha2'])})"
+        # solo si la segunda fecha ya ocurrió el día del corte (un pago futuro no se conocía)
+        d2 = f"CASE WHEN {_q(spec['fecha2'])} < {corte} THEN date_diff('day', {f}, {_q(spec['fecha2'])}) END"
         sel += [f"avg(abs({d2})) AS {p}__plazo_prom", f"max(abs({d2})) AS {p}__plazo_max"]
         dic += [(f"{p}__plazo_prom", t, f"días promedio entre {spec['fecha']} y {spec['fecha2']} (plazo de cobro)"),
                 (f"{p}__plazo_max", t, f"plazo máximo entre {spec['fecha']} y {spec['fecha2']}")]

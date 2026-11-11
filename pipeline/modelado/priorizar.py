@@ -23,6 +23,7 @@ def voraz(df, valor="valor_esperado", zona=None, capacidad=None, cupos=None):
     df = df.sort_values(valor, ascending=False).copy()
     df["priorizado"] = 0
     if zona and zona in df and cupos:
+        cupos = _normalizar_cupos(df, zona, cupos)
         tot = sum(cupos.values())
         for z, pct in cupos.items():
             k = int(round(n_total * pct / tot))
@@ -31,11 +32,27 @@ def voraz(df, valor="valor_esperado", zona=None, capacidad=None, cupos=None):
         # zonas fuera de la lista (DESCONOCIDA, NULL) no consumen cupo: se reporta
         resto = n_total - int(df.priorizado.sum())
         if resto > 0:
+            print(f"  ⚠ voraz: faltan {resto} empresas para llegar a la capacidad (zona sin empresas suficientes o "
+                  f"fuera de CUPOS_ZONA): se completan con las de mayor valor SIN respetar cupos")
+        if resto > 0:
             idx = df.index[df.priorizado == 0][:resto]
             df.loc[idx, "priorizado"] = 1
     else:
         df.loc[df.index[:n_total], "priorizado"] = 1
     return df
+
+
+def _normalizar_cupos(df, zona, cupos):
+    """Los datos llegan en MAYÚSCULAS (txt() de la limpieza); 'Lima' en la config no calzaría con 'LIMA'
+    y el cupo se ignoraría sin aviso."""
+    import unicodedata
+    norm = lambda z: unicodedata.normalize("NFKD", str(z)).encode("ascii", "ignore").decode().strip().upper()
+    c = {norm(z): v for z, v in cupos.items()}
+    presentes = set(df[zona].astype("string").dropna().unique())
+    faltan = [z for z in c if z not in presentes]
+    if faltan:
+        print(f"  ⚠ CUPOS_ZONA: {faltan} no existen en {zona} (valores reales: {sorted(presentes)[:10]})")
+    return c
 
 
 def entero(df, valor="valor_esperado", zona=None, capacidad=None, cupos=None, restricciones_extra=None):
@@ -52,6 +69,7 @@ def entero(df, valor="valor_esperado", zona=None, capacidad=None, cupos=None, re
     prob += pulp.lpSum(x[i] * float(cand.at[i, valor]) for i in cand.index)
     prob += pulp.lpSum(x.values()) <= n_total
     if zona and cupos:
+        cupos = _normalizar_cupos(df, zona, cupos)
         tot = sum(cupos.values())
         for z, pct in cupos.items():
             ids = cand.index[cand[zona].astype("string") == z]
