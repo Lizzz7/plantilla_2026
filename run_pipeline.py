@@ -38,7 +38,7 @@ def main():
     ap.add_argument("--raw", default=None)
     ap.add_argument("--desde", default="ingesta", choices=PASOS)
     ap.add_argument("--solo", default=None, choices=PASOS)
-    ap.add_argument("--ram_gb", type=float, default=8)
+    ap.add_argument("--ram_gb", type=float, default=None, help="RAM a asumir (por defecto, la detectada)")
     ap.add_argument("--corte", default=None, help="otra fecha de corte (backtest fuera de tiempo)")
     ap.add_argument("--sufijo", default="", help="sufijo de tabla_modelo, p.ej. _oot")
     ap.add_argument("--config", default=None)
@@ -47,6 +47,8 @@ def main():
         C.FECHA_CORTE = a.corte
     pasos = [a.solo] if a.solo else PASOS[PASOS.index(a.desde):]
 
+    from pipeline import plataforma
+    print(f"{plataforma.NOMBRE_SISTEMA} · Python {sys.version.split()[0]} · RAM {getattr(C, 'RAM_GB', 0):.0f} GB · DuckDB memory_limit={C.MEMORY_LIMIT} threads={C.THREADS}")
     C.OUT_DIR.mkdir(parents=True, exist_ok=True)
     con = conectar()
     bit = Bitacora()
@@ -79,8 +81,13 @@ def main():
             specs = features.detectar_eventos(perf, rel, ent, gr)
 
     sel = None
-    if a.sufijo:  # tabla de backtest: no re-hace selección ni monitor
+    if a.sufijo:  # tabla de backtest: no re-hace el monitor
         print(f"\nTabla {path_modelo.name} lista (corte {C.FECHA_CORTE}).")
+        # La selección se REHACE con la tabla del corte anterior como train (ver seleccion.embudo_fuera_de_tiempo):
+        # antes se decidía con la tabla del corte actual, que es el examen.
+        actual = C.OUT_DIR / "tabla_modelo.parquet"
+        if a.sufijo == "_t1" and actual.exists():
+            seleccion.ejecutar(bit, actual)
         return
     if "seleccion" in pasos and path_modelo.exists():
         sel = seleccion.ejecutar(bit, path_modelo)

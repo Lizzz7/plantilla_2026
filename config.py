@@ -9,6 +9,10 @@ a su manera. Un solo archivo de configuración = una sola verdad.
 """
 from pathlib import Path
 
+from pipeline import plataforma
+
+plataforma.consola_utf8()   # Windows: sin esto, el primer "⚠" detiene el pipeline (UnicodeEncodeError)
+
 # ----------------------------------------------------------------------------
 # 1. RUTAS
 # ----------------------------------------------------------------------------
@@ -20,10 +24,11 @@ TMP_DIR = BASE / "data" / "tmp_duckdb"   # DuckDB usa disco cuando falta RAM (sp
 
 # ----------------------------------------------------------------------------
 # 2. RECURSOS DE LA MÁQUINA
-#    Regla: memory_limit = ~60% de la RAM física. Con 8 GB -> "5GB". Con 16 GB -> "10GB".
+#    Se calculan solos en cada laptop (Windows, macOS o Linux): memory_limit = 60% de la RAM
+#    física y threads = núcleos - 1. Con 8 GB -> "4GB"; con 16 GB -> "9GB"; con 24 GB -> "14GB".
+#    Para fijarlos a mano, reemplacen la línea por p.ej. MEMORY_LIMIT, THREADS = "5GB", 4
 # ----------------------------------------------------------------------------
-MEMORY_LIMIT = "5GB"
-THREADS = 4
+RAM_GB, MEMORY_LIMIT, THREADS = plataforma.recursos()
 MUESTRA_PERFIL = 1_000_000   # filas para perfilar la FORMA de cada columna (conteo total sí es exacto)
 
 # ----------------------------------------------------------------------------

@@ -22,37 +22,81 @@ from pipeline.modelado.candidatos import fit_lgbm, oof
 from pipeline.modelado.datos import pliegues
 
 
-def comparar_segmentos(D, p_global, params=None):
+def familia_de(elegido):
+    """Qué tipo de modelo se compara por segmento: el del modelo elegido."""
+    return "logistica" if elegido in ("logistica", "regla_1var", "regla_top3") else "lgbm"
+
+
+def comparar_segmentos(D, preds, params=None, elegido="lgbm"):
+    """Global vs uno por segmento, DENTRO de cada segmento y con la MISMA familia que el elegido.
+
+    Antes solo se probaba LightGBM. Pero el experimento A de docs/MODELADO.md mostró que separar
+    le sirve sobre todo a la LOGÍSTICA (0.15 -> 0.63 cuando un efecto cambia de signo), porque un
+    modelo lineal global no puede representar esa interacción y LightGBM sí. Ahora se comparan
+    ambas familias; decide la del modelo elegido y la otra queda como referencia en la tabla.
+    Devuelve la tabla y la lista de segmentos donde gana 'separado' (se aplican en la predicción final)."""
+    from pipeline.modelado.candidatos import fit_logistica
     seg = C.SEGMENTO
     tr = D["train"]
     if not seg or seg not in tr:
-        return None, p_global
+        return None, []
+    fam = familia_de(elegido)
     vs = [v for v in D["vars"] if v != seg]
     y = tr["target"].astype(int)
     s = tr[seg].astype("string").fillna("NA")
-    filas, p_final = [], p_global.copy()
+    ajustes = {"lgbm": (fit_lgbm, dict(params=params)), "logistica": (fit_logistica, {})}
+    filas, ganan = [], []
     for g in s.unique():
         m = (s == g).to_numpy(dtype=bool)
-        yg = y[m]
-        fila = dict(segmento=g, n=int(m.sum()), positivos=int(yg.sum()), tasa=float(yg.mean()),
-                    gini_global=M.gini(yg, p_global[m]))
+        yg = y[m].reset_index(drop=True)
+        fila = dict(segmento=g, familia=fam, n=int(m.sum()), positivos=int(yg.sum()), tasa=float(yg.mean()))
         if yg.sum() >= 30 and (len(yg) - yg.sum()) >= 30:
             Xg = tr.loc[m, vs].reset_index(drop=True)
-            pg = oof(fit_lgbm, Xg, yg.reset_index(drop=True), pliegues(yg.reset_index(drop=True)), params=params)
-            fila["gini_separado"] = M.gini(yg, pg)
+            fg = pliegues(yg)
+            for f, (fn, kw) in ajustes.items():
+                fila[f"gini_global_{f}"] = M.gini(yg, preds[f][m])
+                fila[f"gini_separado_{f}"] = M.gini(yg, oof(fn, Xg, yg, fg, **kw))
+            fila["gini_global"], fila["gini_separado"] = fila[f"gini_global_{fam}"], fila[f"gini_separado_{fam}"]
             if fila["gini_separado"] > fila["gini_global"] + 0.005:
                 fila["gana"] = "separado"
-                p_final[m] = pg
+                ganan.append(g)
             else:
                 fila["gana"] = "global"
         else:
-            fila.update(gini_separado=np.nan, gana="global (pocos positivos)")
+            fila.update(gini_global=M.gini(yg, preds[fam][m]) if 0 < yg.sum() < len(yg) else np.nan,
+                        gini_separado=np.nan, gana="global (pocos positivos)")
         filas.append(fila)
-        print(f"  segmento {g}: n={fila['n']:,} tasa={fila['tasa']:.2%}  global {fila['gini_global']:.4f} vs "
-              f"separado {fila.get('gini_separado', float('nan')):.4f} -> {fila['gana']}")
+        print(f"  segmento {g} [{fam}]: n={fila['n']:,} tasa={fila['tasa']:.2%}  global {fila['gini_global']:.4f} vs "
+              f"separado {fila.get('gini_separado', float('nan')):.4f} -> {fila['gana']}"
+              + (f"   (ref. otra familia: global {fila.get('gini_global_' + ('lgbm' if fam == 'logistica' else 'logistica'), float('nan')):.4f}"
+                 f" / separado {fila.get('gini_separado_' + ('lgbm' if fam == 'logistica' else 'logistica'), float('nan')):.4f})"
+                 if 'gini_global_lgbm' in fila else ""))
     t = pd.DataFrame(filas)
-    t["n_modelos_recomendado"] = 1 + int((t.gana == "separado").sum()) - int((t.gana == "separado").all())
-    return t, p_final
+    t["n_modelos_recomendado"] = 1 + len(ganan) - int(len(ganan) == len(t))
+    return t, ganan
+
+
+def predecir_por_segmento(D, destino, prob, ganan, elegido, params=None):
+    """Aplica en la PREDICCIÓN FINAL los modelos por segmento que ganaron (antes se medían y se
+    descartaban: la entrega siempre usaba el global). Entrena con el train del segmento y puntúa
+    solo las filas de ese segmento; el resto conserva la probabilidad del modelo global."""
+    from pipeline.modelado.candidatos import fit_logistica
+    if not ganan:
+        return prob
+    seg, tr, vs = C.SEGMENTO, D["train"], [v for v in D["vars"] if v != C.SEGMENTO]
+    fam = familia_de(elegido)
+    p = np.asarray(prob, dtype=float).copy()
+    s_tr = tr[seg].astype("string").fillna("NA")
+    s_de = destino[seg].astype("string").fillna("NA").to_numpy()
+    for g in ganan:
+        mt, md = (s_tr == g).to_numpy(), (s_de == g)
+        if md.sum() == 0:
+            continue
+        Xg, yg = tr.loc[mt, vs].reset_index(drop=True), tr.loc[mt, "target"].astype(int).reset_index(drop=True)
+        Xd = destino.loc[md, vs].reset_index(drop=True)
+        p[md] = fit_logistica(Xg, yg, Xd) if fam == "logistica" else fit_lgbm(Xg, yg, Xd, params=params)
+        print(f"  segmento {g}: predicción final con modelo PROPIO ({fam}) en {int(md.sum()):,} filas")
+    return p
 
 
 def dos_partes(D, p_conv, params=None):

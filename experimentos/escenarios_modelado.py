@@ -45,7 +45,10 @@ def correr(nombre, D, segmentos=True):
         print(f"  diag · {t}")
     t, preds, _ = candidatos.comparar(D)
     if segmentos:
-        segmentos_monto.comparar_segmentos(D, preds["lgbm"])
+        print("  -- si el elegido fuera LightGBM:")
+        segmentos_monto.comparar_segmentos(D, preds, elegido="lgbm")
+        print("  -- si el elegido fuera la logística:")
+        segmentos_monto.comparar_segmentos(D, preds, elegido="logistica")
         # misma pregunta con LOGÍSTICA: global vs una por segmento
         from pipeline.modelado import metricas as M
         from pipeline.modelado.datos import pliegues

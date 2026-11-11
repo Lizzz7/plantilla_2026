@@ -26,6 +26,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 
 import config as C
+from pipeline import plataforma
 
 EXT_EXCEL = {".xlsx", ".xlsm", ".xlsb", ".xls"}
 EXT_CSV = {".csv", ".txt", ".tsv"}
@@ -226,8 +227,9 @@ def ingestar_excel(con, path: Path, out_dir: Path, ram_gb=8):
 
 
 # ---------------------------------------------------------------- orquestador del paso
-def ejecutar(con, bit, raw_dir=None, ram_gb=8):
+def ejecutar(con, bit, raw_dir=None, ram_gb=None):
     raw_dir = Path(raw_dir or C.RAW_DIR)
+    ram_gb = ram_gb or getattr(C, "RAM_GB", 8)
     bronze = C.WORK_DIR / "bronze"
     bronze.mkdir(parents=True, exist_ok=True)
     for f in bronze.glob("*.parquet"):
@@ -281,7 +283,7 @@ def _unir(con, bronze, bit, destino_nombre, partes, motivo):
                 f"TO '{tmp.as_posix()}' (FORMAT parquet, COMPRESSION zstd)")
     for p in partes:
         p.unlink()
-    tmp.rename(destino)
+    plataforma.reemplazar(tmp, destino)   # rename falla en Windows si el destino existe
     n = con.execute(f"SELECT count(*) FROM '{destino.as_posix()}'").fetchone()[0]
     bit.registrar("ingesta", destino_nombre, n, len(_cols(con, destino)) - 2, {motivo: len(partes)}, 0)
 
@@ -330,7 +332,7 @@ def _unir_hojas_gemelas(con, bronze, bit):
     for (base, _), partes in grupos.items():
         if len(partes) < 2:
             if len(partes) == 1 and len(list(bronze.glob(f"{base}__*.parquet"))) == 1:
-                partes[0].rename(bronze / f"{base}.parquet")  # una sola hoja: nombre limpio
+                plataforma.reemplazar(partes[0], bronze / f"{base}.parquet")  # una sola hoja: nombre limpio
             continue
         destino = bronze / f"{base}.parquet"
         lista = ", ".join(f"'{p.as_posix()}'" for p in partes)

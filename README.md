@@ -29,6 +29,10 @@ experimentos/                 ← pruebas de escenarios (USB distinto, segmentos
 
 ## Cómo se usa
 
+> **Windows, macOS o Linux:** la instalación y los comandos de cada sistema (entorno virtual, `py` vs `python3`,
+> `brew install libomp`, OneDrive/iCloud, problemas frecuentes) están en **[docs/GUIA_EJECUCION.md](docs/GUIA_EJECUCION.md)**.
+> La RAM y los núcleos se detectan solos en cada laptop.
+
 ```bash
 python preparar_offline.py                        # EN CASA, con internet, en las 5 laptops
 # el día del concurso:

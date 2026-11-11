@@ -13,3 +13,5 @@ lightgbm
 optuna
 pulp
 highspy
+xgboost
+catboost

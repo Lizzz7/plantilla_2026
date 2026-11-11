@@ -39,7 +39,8 @@ from pipeline.modelado import afinamiento, candidatos, datos, diagnostico, impor
 from pipeline.modelado import metricas as M  # noqa: E402
 from pipeline.modelado import priorizar, reporte_modelo, segmentos_monto  # noqa: E402
 
-SIMPLICIDAD = ["regla_1var", "regla_top3", "logistica", "lgbm", "lgbm_pesos", "lgbm_submuestra", "lgbm_afinado", "ensamble"]
+SIMPLICIDAD = ["regla_1var", "regla_top3", "logistica", "lgbm", "xgb", "catboost", "lgbm_pesos", "lgbm_submuestra",
+               "lgbm_afinado", "ensamble"]   # a igual Gini (±0.005) gana el de más a la izquierda
 
 
 def elegir(tabla, tolerancia=0.005):
@@ -61,6 +62,10 @@ def ajustar_final(nombre, D, params):
         return candidatos.fit_logistica(X, y, Xs), None
     if nombre.startswith("regla"):
         return candidatos.regla(X, y, Xs, k=1 if nombre == "regla_1var" else 3), None
+    if nombre == "xgb":
+        return candidatos.fit_xgb(X, y, Xs, devolver=True)
+    if nombre == "catboost":
+        return candidatos.fit_catboost(X, y, Xs, devolver=True)
     kw = dict(params=params)
     if nombre == "lgbm_pesos":
         kw["peso"] = True
@@ -78,6 +83,8 @@ def main():
     ap.add_argument("--rapido", action="store_true")
     ap.add_argument("--config", default=None)
     a = ap.parse_args()
+    from pipeline import plataforma
+    print(f"{plataforma.NOMBRE_SISTEMA} · Python {sys.version.split()[0]} · RAM {getattr(C, 'RAM_GB', 0):.0f} GB · DuckDB memory_limit={C.MEMORY_LIMIT} threads={C.THREADS}")
     out = C.OUT_DIR / "modelo"
     out.mkdir(parents=True, exist_ok=True)
     t0 = time.time()
@@ -91,7 +98,7 @@ def main():
     R["diagnostico"] = dict(medidas=med, recomendaciones=recs, modo=D["modo"], n_vars=len(D["vars"]))
 
     print("\n== 2 · CANDIDATOS (validación cruzada OOF, 5 pliegues estratificados) ==")
-    tabla, preds, folds = candidatos.comparar(D)
+    tabla, preds, folds = candidatos.comparar(D, extra=not a.rapido)
 
     params = None
     if a.optuna:
@@ -114,9 +121,10 @@ def main():
     R["deciles"] = M.deciles(y, preds[elegido])
     R["calibracion"] = {k: M.calibracion(y, preds[k]) for k in ["logistica", "lgbm", "lgbm_pesos", "lgbm_submuestra"]}
 
+    ganan_seg = []
     if not a.rapido:
         print("\n== 4 · ¿UNO O VARIOS MODELOS? (segmentos) ==")
-        seg, p_seg = segmentos_monto.comparar_segmentos(D, preds[base], params)
+        seg, ganan_seg = segmentos_monto.comparar_segmentos(D, preds, params, elegido)
         if seg is not None:
             seg.to_csv(out / "segmentos.csv", index=False)
             R["segmentos"] = seg
@@ -147,6 +155,17 @@ def main():
             return str(v)
     caso = pd.DataFrame({"variable": vs, "valor": [_fmt(v) for v in Xva.iloc[i].values], "aporte": contrib[i]})
     R["caso"] = caso.reindex(caso.aporte.abs().sort_values(ascending=False).index).head(10)
+    R["caso_modelo"] = "LightGBM (modelo de referencia)"
+    # Si el ENTREGADO es la logística, se explica la logística (coeficientes + aporte exacto por caso):
+    # en la presentación no se debe mostrar el SHAP de un modelo que no se entregó.
+    if elegido == "logistica":
+        coef, caso_log = candidatos.explicar_logistica(tr[vs], y, Xva)
+        coef.to_csv(out / "coeficientes_logistica.csv", index=False)
+        R["coef_logistica"] = coef
+        if caso_log is not None:
+            R["caso"], R["caso_modelo"] = caso_log, "logística (modelo elegido)"
+        print("\n  Modelo elegido = logística -> coeficientes estandarizados (los que se explican al jurado):")
+        print(coef.head(10)[["variable", "coef", "odds_ratio", "sentido"]].round(3).to_string(index=False))
 
     print("\n== 6 · MONTO ==")
     mon, mod_monto = segmentos_monto.dos_partes(D, preds[base], params)
@@ -156,6 +175,11 @@ def main():
     p_final, mod_final = ajustar_final(elegido, D, params)
     destino = (D["score"] if D["score"] is not None else D["train"]).copy()
     destino["prob"] = p_final if D["score"] is not None else preds[elegido]
+    if ganan_seg and D["score"] is not None:
+        if elegido in ("logistica", "lgbm", "lgbm_afinado"):
+            destino["prob"] = segmentos_monto.predecir_por_segmento(D, destino, destino["prob"], ganan_seg, elegido, params)
+        else:
+            print(f"  (ganó 'separado' en {ganan_seg}, pero el elegido es {elegido}: no se mezclan escalas; se usa el global)")
     if mod_monto is not None:
         lp_pred = mod_monto.predict(destino[vs])
         destino["monto_si_convierte"] = np.expm1(lp_pred) * mon["factor_duan"]

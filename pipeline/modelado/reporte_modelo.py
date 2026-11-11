@@ -95,7 +95,9 @@ def generar(R, destino):
     if "segmentos" in R:
         s = R["segmentos"]
         sec("¿Uno o varios modelos?",
-            f"Se entrena global y uno por segmento; gana el que mide más EN CADA segmento. Recomendación: "
+            f"Se entrena global y uno por segmento con la familia del modelo elegido ({html.escape(str(s.familia.iloc[0]))}); "
+            f"la otra familia aparece en la tabla como referencia. Gana el que mide más EN CADA segmento y, si gana "
+            f"'separado', la predicción final de ese segmento usa su modelo propio. Recomendación: "
             f"{int(s.n_modelos_recomendado.iloc[0])} modelo(s) de probabilidad.")
         f = go.Figure()
         f.add_bar(x=s.segmento, y=s.gini_global, name="global", marker_color=AZUL)
@@ -107,7 +109,8 @@ def generar(R, destino):
     # ---------------- importancia
     imp = R["importancia"].head(20).iloc[::-1]
     sec("Qué variables importan (y si se puede confiar)",
-        f"Medido en: {R['importancia_donde']}. SHAP = aporte promedio; permutación = cuánto cae el Gini si la variable se desordena. "
+        f"Medido en: {R['importancia_donde']}, con LightGBM"
+        f"{'' if R['elegido'].startswith('lgbm') else ' como modelo de referencia (el elegido es ' + R['elegido'] + ')'}. SHAP = aporte promedio; permutación = cuánto cae el Gini si la variable se desordena. "
         "Gain alto con permutación ~0 = el modelo la usa pero no generaliza.")
     P.append("<div class='grid2'><div>")
     f = go.Figure(go.Bar(y=imp.variable, x=imp.shap_medio, orientation="h", marker_color=AZUL,
@@ -119,9 +122,22 @@ def generar(R, destino):
     f.update_layout(height=560, title="Permutación (caída de Gini)")
     P.append(fig(f) + "</div></div>")
     P.append(_tabla(R["importancia"].round(4), "t_imp"))
+    if "coef_logistica" in R:
+        cf = R["coef_logistica"].head(20).iloc[::-1]
+        sec("Modelo elegido (logística): coeficientes estandarizados",
+            "Esto es lo que se explica al jurado, porque es el modelo entregado. Coeficiente = cuánto suben los log-odds si la "
+            "variable sube 1 desviación estándar. Odds ratio = exp(coef): 1.5 multiplica las chances por 1.5; 0.7 las baja 30%. "
+            "Las gráficas de arriba (SHAP, permutación) son de LightGBM como referencia del patrón.")
+        f = go.Figure(go.Bar(y=cf.variable, x=cf.coef, orientation="h",
+                             marker_color=[AZUL if v > 0 else CRITICO for v in cf.coef], customdata=cf[["odds_ratio"]],
+                             hovertemplate="%{y}<br>coef %{x:.3f}<br>odds ratio %{customdata[0]:.2f}<extra></extra>"))
+        f.update_layout(height=560, xaxis_title="coeficiente (variable estandarizada)")
+        P.append(fig(f))
+        P.append(_tabla(R["coef_logistica"].round(4), "t_coef"))
     if "caso" in R:
-        sec("Explicar un caso: la empresa mejor puntuada", "Aporte de cada variable a SU predicción (log-odds), calculado con LightGBM como modelo de referencia "
-            "(aunque el elegido sea otro: sirve para explicar el patrón). Positivo = la empuja hacia arriba.")
+        sec("Explicar un caso: la empresa mejor puntuada",
+            f"Modelo usado: {html.escape(R.get('caso_modelo', 'LightGBM'))}. Aporte de cada variable a SU predicción (log-odds) "
+            "frente a la empresa promedio. Positivo = la empuja hacia arriba.")
         c = R["caso"].iloc[::-1]
         f = go.Figure(go.Bar(y=c.variable + " = " + c.valor.str.slice(0, 14), x=c.aporte, orientation="h",
                              marker_color=[AZUL if v > 0 else CRITICO for v in c.aporte],

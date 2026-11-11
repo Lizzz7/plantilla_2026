@@ -112,8 +112,62 @@ def embudo(df, target="target", split="split", excluir=("id", "target_monto", "f
     return r.assign(_o=r.decision.map(orden)).sort_values(["_o", "gini"], ascending=[True, False]).drop(columns="_o").reset_index()
 
 
+def embudo_fuera_de_tiempo(train, actual, target="target"):
+    """Embudo HONESTO cuando existe la tabla de un corte anterior (tabla_modelo_t1).
+
+    Por qué existe (huecos 1, 2 y 4 de la revisión):
+      - La selección se decide SOLO con la tabla de entrenamiento (corte anterior). La del corte
+        actual es el examen: si se eligen variables mirando su target, el examen deja de ser ciego.
+      - PSI entre CORTES (no entre dos mitades al azar del mismo periodo): así sí detecta las
+        variables que cambiaron con el tiempo (conteos acumulados, cambios de sistema).
+      - Fuga en CUALQUIERA de las dos tablas: una columna de una tabla "foto" (sin fecha, tomada
+        hoy) puede verse inocente en el corte anterior (Gini 0.16) y ser el futuro en el actual
+        (Gini 0.91). Se marca REVISAR_FUGA si es demasiado buena en train O en el corte actual.
+    """
+    comunes = [c for c in train.columns if c in actual.columns]
+    a = train[comunes].assign(split="train")
+    b = actual[comunes].assign(split="valid")
+    r = embudo(pd.concat([a, b], ignore_index=True), target=target)
+    r = r.set_index("variable")          # aquí 'psi' = PSI ENTRE CORTES (train = corte anterior, valid = actual)
+    r["motivo"] = r.motivo.str.replace("F2 inestable (PSI > 0.25)", "F2 cambió entre cortes (PSI > 0.25)", regex=False)
+    r["gini_actual"], r["iv_actual"] = np.nan, np.nan
+    if target in actual and actual[target].nunique() > 1:
+        U = C.U
+        for v in r.index:
+            s = actual[v]
+            if not pd.api.types.is_numeric_dtype(s):
+                s = s.astype("string").map(s.astype("string").value_counts(normalize=True)).astype(float)
+            r.loc[v, "gini_actual"] = gini(s, actual[target])
+            r.loc[v, "iv_actual"] = iv(s, actual[target])
+        fuga = (r.gini_actual > U["gini_fuga"]) | (r.iv_actual > U["iv_fuga"])
+        nuevas = fuga & (r.decision != "REVISAR_FUGA")
+        r.loc[nuevas, "motivo"] = ("F3 fuga en el CORTE ACTUAL (Gini " + r.loc[nuevas, "gini_actual"].round(2).astype(str)
+                                   + " vs " + r.loc[nuevas, "gini"].round(2).astype(str)
+                                   + " en train): ¿tabla foto tomada hoy? ¿existe el día de decidir?")
+        r.loc[fuga, "decision"] = "REVISAR_FUGA"
+    orden = {"REVISAR_FUGA": 0, "QUEDA": 1, "FUERA": 2}
+    r = r.reset_index()
+    return r.assign(_o=r.decision.map(orden)).sort_values(["_o", "gini"], ascending=[True, False]).drop(columns="_o")
+
+
 def ejecutar(bit, path_modelo, split_fn=None):
     print("\n== PASO 7 · SELECCIÓN ==")
+    path_t1 = C.OUT_DIR / "tabla_modelo_t1.parquet"
+    if split_fn is None and path_t1.exists():
+        tr, ac = pd.read_parquet(path_t1), pd.read_parquet(path_modelo)
+        if "target" in tr and tr["target"].nunique() > 1:
+            print(f"  modo FUERA DE TIEMPO: decide con {path_t1.name}; PSI entre cortes; fugas en ambas tablas")
+            r = embudo_fuera_de_tiempo(tr, ac)
+            r.to_csv(C.OUT_DIR / "seleccion_variables.csv", index=False, encoding="utf-8-sig")
+            bit.registrar("seleccion", "tabla_modelo_t1+actual", len(tr), int((r.decision == "QUEDA").sum()),
+                          {"embudo": r.decision.value_counts().to_dict(), "modo": "fuera_de_tiempo"})
+            for _, x in r[r.decision == "REVISAR_FUGA"].iterrows():
+                print(f"  ⚠ REVISAR FUGA: {x.variable}  Gini train={x.gini:.2f}  Gini actual={x.gini_actual:.2f}  IV={x.iv:.2f}")
+            inest = r[r.motivo.str.startswith("F2", na=False)]
+            if len(inest):
+                print(f"  ✂ {len(inest)} variable(s) FUERA por PSI entre cortes > {C.U['psi_drop']}: "
+                      + ", ".join(inest.variable.head(8)))
+            return r
     df = pd.read_parquet(path_modelo)
     if "target" not in df:
         print("  (sin target definido en config.TARGET -> se omite el embudo)")
