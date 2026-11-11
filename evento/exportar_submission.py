@@ -11,6 +11,8 @@ Uso (desde la raíz del repo del evento, después de copiar este archivo a traba
 import argparse
 import importlib.util
 import sys
+
+sys.dont_write_bytecode = True   # sin __pycache__: no ensucia base_conocimiento/ ni trabajo/
 from pathlib import Path
 
 import pandas as pd

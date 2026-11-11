@@ -24,6 +24,13 @@ Las salidas pesadas (parquet, reportes HTML, predicciones) van a `~/datafest_tra
 
 **Supuesto:** que los datos se ponen en `data/` de la raíz. Si la organización indica otra carpeta, cambien `RAW_DIR` en `config_evento.py`.
 
+## Miércoles 11 y jueves 12 (antes de armar la base)
+
+1. **Consultar a la organización** (respondiendo su correo) si se admite en `base_conocimiento/` código propio preparado antes del evento con asistencia de una IA. El PDF solo dice "código que escribió alguien de su equipo"; sin respuesta escrita, llevarlo es un riesgo.
+2. **Poner en privado** los repos de práctica del equipo en GitHub (Settings → Danger Zone → Change visibility). El PDF prohíbe "código copiado de repositorios públicos": si la plantilla sigue pública, otro equipo puede copiarla y el control no sabrá quién copió a quién.
+3. `python preparar_offline.py` en las 5 laptops: debe terminar sin ningún FALTA.
+4. Simulacro completo con datos de prueba (ver "Simulacro" al final).
+
 ## Jueves 12 (noche)
 
 1. Las 5 aceptan la invitación de GitHub antes del viernes a las 12:00.
@@ -83,3 +90,24 @@ Lo copiado fuera de la base **cuenta como código nuevo** (PDF). Son ~3 archivos
 - Subir cualquier dato a cualquier carpeta.
 - Usar otra IA que no sea el Copilot del evento, pegar datos o el enunciado en otros servicios, o pedir ayuda fuera del equipo.
 - Mencionar la universidad (nombre del equipo, repo, presentación, defensa).
+
+## Simulacro (con datos sintéticos, fuera del repo del evento)
+
+Reproduce el flujo del viernes en una carpeta de mentira. macOS / Linux:
+
+```
+python generar_datos_prueba.py
+mkdir -p ~/sim_evento/data && cd ~/sim_evento && git init && echo reglas > REGLAS.md
+python RUTA/plantilla_2026/evento/copiar_a_base.py --repo-evento ~/sim_evento --revisado-por "usuarios"
+cp RUTA/plantilla_2026/data/raw/*.* data/
+mkdir -p trabajo && cp base_conocimiento/plantilla/evento/config_evento.py base_conocimiento/plantilla/evento/exportar_submission.py trabajo/
+export DATAFEST_PRUEBA=1        # Windows PowerShell:  $env:DATAFEST_PRUEBA = "1"
+python base_conocimiento/plantilla/run_pipeline.py --config trabajo/config_evento.py
+python base_conocimiento/plantilla/run_pipeline.py --config trabajo/config_evento.py --desde features --corte 2025-01-01 --sufijo _t1
+python base_conocimiento/plantilla/run_modelo.py --config trabajo/config_evento.py --rapido
+python trabajo/exportar_submission.py --config trabajo/config_evento.py
+git status     # solo deben aparecer base_conocimiento/, trabajo/ y entregas/submission.csv
+```
+
+Tiempos medidos el 11/11 con 20 000 empresas: pipeline ~70 s, corte anterior ~6 s, modelo rápido ~25 s.
+Al terminar, borren `~/sim_evento` y `~/datafest_trabajo`. `DATAFEST_PRUEBA` no se usa el día del evento.

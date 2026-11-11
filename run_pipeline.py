@@ -11,6 +11,8 @@ Cada paso deja su salida en disco, así que si algo falla se retoma desde ese pa
 """
 import argparse
 import sys
+
+sys.dont_write_bytecode = True   # sin __pycache__: no ensucia base_conocimiento/ ni trabajo/
 import time
 from pathlib import Path
 

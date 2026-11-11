@@ -30,7 +30,7 @@ OneDrive (Windows) e iCloud (macOS, en "Documentos" y "Escritorio") bloquean arc
 Luego clonen ahí:
 ```
 git clone <url-del-repo>
-cd plantilla_datafest
+cd plantilla_2026
 ```
 
 ## Paso 3. Crear y activar el entorno virtual

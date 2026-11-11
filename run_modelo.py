@@ -19,6 +19,8 @@ Salidas en salidas/modelo/ + reporte_modelo.html
 import argparse
 import json
 import sys
+
+sys.dont_write_bytecode = True   # sin __pycache__: no ensucia base_conocimiento/ ni trabajo/
 import time
 from pathlib import Path
 
