@@ -365,7 +365,16 @@ def ejecutar(con, bit, perfil, rel, gr, ent, sufijo=""):
         print(f"  OBJETIVO: tasa de positivos = {tasa:.2%}")
     con.execute(f"CREATE OR REPLACE TABLE modelo AS SELECT *, DATE '{C.FECHA_CORTE}' AS fecha_corte FROM modelo")
     destino = C.OUT_DIR / f"tabla_modelo{sufijo}.parquet"
-    con.execute(f"COPY modelo TO '{destino.as_posix()}' (FORMAT parquet)")
+    # ORDER BY id: DuckDB procesa en paralelo y devuelve las filas en orden distinto en cada corrida.
+    # Como la selección (70/30) y los pliegues del modelo se arman por POSICIÓN, sin esto dos corridas
+    # con los mismos datos daban Gini y variables distintas. Ordenado = reproducible.
+    # round(round(x, 9), 6): DuckDB suma en paralelo y el orden de la suma cambia el último decimal (~1e-15) entre
+    # corridas; a LightGBM eso le basta para cortar distinto (Gini ±0.0025). El paso a 9 decimales absorbe ese
+    # ruido antes de redondear a 6 (si no, los promedios que caen justo en ...5 se redondean a veces arriba y a
+    # veces abajo). 6 decimales sobran para modelar.
+    tipos = con.execute("DESCRIBE modelo").fetchall()
+    sel = ", ".join(f'round(round("{c}", 9), 6) AS "{c}"' if t in ("DOUBLE", "FLOAT", "REAL") else f'"{c}"' for c, t, *_ in tipos)
+    con.execute(f"COPY (SELECT {sel} FROM modelo ORDER BY id) TO '{destino.as_posix()}' (FORMAT parquet)")
     pd.DataFrame(dic, columns=["variable", "tabla_origen", "significado"]).to_csv(
         C.OUT_DIR / "diccionario_variables.csv", index=False, encoding="utf-8-sig")
     n, k = con.execute("SELECT count(*) FROM modelo").fetchone()[0], len(con.execute("DESCRIBE modelo").fetchall())

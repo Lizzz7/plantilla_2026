@@ -32,6 +32,9 @@ experimentos/                 ← pruebas de escenarios (USB distinto, segmentos
 > **Windows, macOS o Linux:** la instalación y los comandos de cada sistema (entorno virtual, `py` vs `python3`,
 > `brew install libomp`, OneDrive/iCloud, problemas frecuentes) están en **[docs/GUIA_EJECUCION.md](docs/GUIA_EJECUCION.md)**.
 > La RAM y los núcleos se detectan solos en cada laptop.
+>
+> **Repo del evento (Datafest-BCP):** cómo pasar esta plantilla a `base_conocimiento/`, correrla sin editarla
+> y generar `entregas/submission.csv` y `presentacion/index.html` → **[docs/PASOS_EVENTO.md](docs/PASOS_EVENTO.md)** y carpeta `evento/`.
 
 ```bash
 python preparar_offline.py                        # EN CASA, con internet, en las 5 laptops

@@ -112,6 +112,12 @@ def embudo(df, target="target", split="split", excluir=("id", "target_monto", "f
     return r.assign(_o=r.decision.map(orden)).sort_values(["_o", "gini"], ascending=[True, False]).drop(columns="_o").reset_index()
 
 
+def leer_ordenado(path):
+    """Tabla de modelo siempre en el mismo orden (por id): el split 70/30 depende de la posición."""
+    df = pd.read_parquet(path)
+    return df.sort_values("id", kind="stable").reset_index(drop=True) if "id" in df else df
+
+
 def embudo_fuera_de_tiempo(train, actual, target="target"):
     """Embudo HONESTO cuando existe la tabla de un corte anterior (tabla_modelo_t1).
 
@@ -154,7 +160,7 @@ def ejecutar(bit, path_modelo, split_fn=None):
     print("\n== PASO 7 · SELECCIÓN ==")
     path_t1 = C.OUT_DIR / "tabla_modelo_t1.parquet"
     if split_fn is None and path_t1.exists():
-        tr, ac = pd.read_parquet(path_t1), pd.read_parquet(path_modelo)
+        tr, ac = leer_ordenado(path_t1), leer_ordenado(path_modelo)
         if "target" in tr and tr["target"].nunique() > 1:
             print(f"  modo FUERA DE TIEMPO: decide con {path_t1.name}; PSI entre cortes; fugas en ambas tablas")
             r = embudo_fuera_de_tiempo(tr, ac)
@@ -168,7 +174,7 @@ def ejecutar(bit, path_modelo, split_fn=None):
                 print(f"  ✂ {len(inest)} variable(s) FUERA por PSI entre cortes > {C.U['psi_drop']}: "
                       + ", ".join(inest.variable.head(8)))
             return r
-    df = pd.read_parquet(path_modelo)
+    df = leer_ordenado(path_modelo)
     if "target" not in df:
         print("  (sin target definido en config.TARGET -> se omite el embudo)")
         return None

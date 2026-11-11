@@ -33,3 +33,37 @@ Probado de punta a punta con los datos de prueba (20k empresas) y con 100k empre
 | Finales de línea distintos (CRLF/LF) generan diffs falsos entre Windows y Mac | `.gitattributes` | `text=auto eol=lf` | — |
 | La instalación no detectaba problemas por sistema | `preparar_offline.py` | Revisa la versión de Python y OneDrive/iCloud, instala desde `requirements.txt`, prueba cada librería y da el arreglo para cada sistema; imprime un resumen OK/FALTA | Corrido con Python 3.10 en una ruta con espacios, tildes y ñ |
 | No había instrucciones por sistema | `docs/GUIA_EJECUCION.md`, `README.md` | Guía paso a paso con comandos para Windows, macOS y Linux | — |
+
+## Preparación para el repo del evento (11/11, según el PDF de participación)
+
+| Requisito del PDF | Archivo | Qué hace |
+|---|---|---|
+| Base de conocimiento sin datos, ≤ 20 MB, con INVENTARIO.md | `evento/copiar_a_base.py` | Copia solo archivos versionados (sin historial ni datos), verifica tamaño, genera el inventario declarando la asistencia de IA |
+| La base se cierra a las 14:00 y no se edita después | `evento/config_evento.py` | Se copia a `trabajo/`; corre la plantilla desde la base, apaga los valores de ejemplo, manda salidas fuera del repo |
+| No subir .csv al repo | `pipeline/perfil.py`, `config_evento.py` | `DECISIONES_MANUAL` dentro de la config reemplaza `decisiones_manual.csv` |
+| `entregas/submission.csv` + `python -m datafest.validar` | `evento/exportar_submission.py` | Convierte `predicciones.csv` al formato (ajustable) y revisa duplicados y nulos |
+| `presentacion/index.html` para negocio y técnicos | `evento/presentacion_index.html` | Estructura de 9 diapositivas, sin librerías externas; tecla `t` oculta el anexo técnico |
+| `docs/BITACORA_FUENTES.md` y `docs/USO_DE_IA.md` | `evento/BITACORA_FUENTES_inicial.md`, `evento/USO_DE_IA_ejemplo.md` | Filas iniciales y formato |
+| Calendario y reglas | `docs/PASOS_EVENTO.md` | Checklist del jueves al sábado |
+
+Probado simulando el repo del evento: base de 47 archivos (0.29 MB, sin datos); pipeline, corte anterior, modelo y
+submission corridos desde la raíz con `--config trabajo/config_evento.py`; `git status` solo muestra `trabajo/` y
+`entregas/submission.csv`.
+
+## Reproducibilidad: mismos datos = mismo resultado (11/11)
+
+**Problema (ya existía en la versión original):** dos corridas seguidas, con la misma versión y los mismos datos,
+cambiaban la decisión de 4 variables en la selección (`saldo_ultimo`, `saldo_vol`, `var_buro_04`, `var_buro_11`)
+y el Gini de LightGBM en ±0.0025. En la evaluación técnica, "lo corrí de nuevo y salió otro número" es difícil de defender.
+
+**Causas medidas y arreglos:**
+
+| Causa | Arreglo | Archivo |
+|---|---|---|
+| DuckDB devuelve las filas en otro orden en cada corrida, y el split 70/30 y los pliegues se arman por posición | La tabla se guarda y se lee ordenada por `id` (`leer_ordenado`) | `pipeline/features.py`, `pipeline/seleccion.py`, `pipeline/modelado/datos.py` |
+| Las sumas en paralelo cambian el último decimal (~1e-15) y LightGBM corta distinto | Variables decimales a `round(round(x, 9), 6)` al guardar la tabla | `pipeline/features.py` |
+| Paralelismo interno de LightGBM | `deterministic=True, force_col_wise=True` | `pipeline/modelado/candidatos.py` |
+
+**Verificado:** dos corridas completas con 4 hilos dan resultados idénticos en `tabla_modelo`, `tabla_modelo_t1`,
+`seleccion_variables`, la comparación de los 9 modelos, las predicciones, la importancia, los coeficientes y los segmentos.
+El resultado no cambia en lo sustancial: logística Gini OOF 0.3222, examen 0.3476.

@@ -29,7 +29,8 @@ from pipeline.regularizar import Regularizador
 warnings.filterwarnings("ignore")
 
 LGBM_BASE = dict(n_estimators=600, learning_rate=0.05, num_leaves=31, min_child_samples=50,
-                 subsample=0.8, subsample_freq=1, colsample_bytree=0.8, reg_lambda=1.0, verbose=-1, n_jobs=-1)
+                 subsample=0.8, subsample_freq=1, colsample_bytree=0.8, reg_lambda=1.0, verbose=-1, n_jobs=-1,
+                 deterministic=True, force_col_wise=True)   # mismo resultado en cada corrida (ver CAMBIOS_REVISION)
 
 
 def _rank(x):

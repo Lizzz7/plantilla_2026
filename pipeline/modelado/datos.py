@@ -17,6 +17,7 @@ import numpy as np
 import pandas as pd
 
 import config as C
+from pipeline.seleccion import leer_ordenado
 
 META = {"id", "target", "target_monto", "fecha_corte", "split"}
 
@@ -49,7 +50,7 @@ def tipificar(train, otros, vs):
 
 
 def cargar():
-    base = pd.read_parquet(C.OUT_DIR / "tabla_modelo.parquet")
+    base = leer_ordenado(C.OUT_DIR / "tabla_modelo.parquet")   # mismo orden = mismos pliegues = mismo Gini
     t1 = C.OUT_DIR / "tabla_modelo_t1.parquet"
     if C.EVALUAR:
         from pipeline.db import conectar
@@ -63,7 +64,7 @@ def cargar():
         train = base[~base.id.isin(ids) & base.target.notna()].copy()
         modo = "lista de evaluación del banco"
     elif t1.exists():
-        train, score = pd.read_parquet(t1), base.copy()
+        train, score = leer_ordenado(t1), base.copy()
         modo = f"fuera de tiempo: entrena corte {train.fecha_corte.iloc[0]}, puntúa corte {score.fecha_corte.iloc[0]}"
     else:
         train, score = base.copy(), None

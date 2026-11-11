@@ -200,10 +200,15 @@ def clasificar(df):
 
 def aplicar_manual(df):
     """decisiones_manual.csv (tabla,columna,decision,rol) pisa lo automático. Aquí entra el humano."""
-    p = C.BASE / "decisiones_manual.csv"
-    if not p.exists():
-        return df
-    man = pd.read_csv(p, dtype=str).fillna("")
+    # En el evento, las decisiones van DENTRO de config_evento.py (DECISIONES_MANUAL = [dict(...), ...])
+    # para no subir un .csv al repo: el control automático avisa si ve archivos de datos.
+    if getattr(C, "DECISIONES_MANUAL", None):
+        man = pd.DataFrame(C.DECISIONES_MANUAL).astype(str).replace("None", "").fillna("")
+    else:
+        p = C.BASE / "decisiones_manual.csv"
+        if not p.exists():
+            return df
+        man = pd.read_csv(p, dtype=str).fillna("")
     for _, m in man.iterrows():
         sel = (df.tabla == m.tabla) & (df.columna == m.columna)
         if m.get("decision"):
