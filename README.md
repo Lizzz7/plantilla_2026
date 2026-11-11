@@ -165,8 +165,8 @@ Medido en una máquina de 2 núcleos con 8 GB: **4.4 M filas (384 MB crudos) →
 Cada integrante debe aceptar la invitación al repositorio y clonar el proyecto. Se recomienda trabajar en un entorno virtual e instalar las dependencias según las instrucciones del equipo. No compartan credenciales ni suban datos confidenciales del BCP o del concurso.
 
 ```bash
-git clone https://github.com/Lizzz7/plantilla_datafest.git
-cd plantilla_datafest
+git clone https://github.com/Lizzz7/plantilla_2026.git
+cd plantilla_2026
 git switch -c tipo/descripcion-corta
 ```
 

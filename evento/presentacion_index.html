@@ -150,7 +150,7 @@
   const slides = [...document.querySelectorAll(".slide")];
   const nav = document.getElementById("puntos"), pie = document.getElementById("pie");
   let i = 0;
-  slides.forEach((_, k) => { const b = document.createElement("button"); b.setAttribute("aria-label", "ir a " + (k + 1)); b.onclick = () => ir(k); nav.appendChild(b); });
+  slides.forEach((_, k) => { const b = document.createElement("button"); b.setAttribute("aria-label", "ir a " + (k + 1)); b.onclick = () => ir(visibles().indexOf(slides[k])); nav.appendChild(b); });
   function visibles() { return slides.filter(s => !(document.body.classList.contains("sin-tecnico") && s.classList.contains("tecnico"))); }
   function ir(k) {
     const v = visibles(); i = Math.max(0, Math.min(k, v.length - 1));

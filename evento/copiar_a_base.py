@@ -35,7 +35,6 @@ DESCRIPCION = {
     ".gitignore": ("Config. git", "Impide subir data/, salidas/ y parquet"),
     "README.md": ("Documentación", "Mapa de la plantilla y cómo usarla"),
     "config.py": ("Configuración", "Parámetros del caso (corte, target, capacidad); en el evento NO se edita: se usa config_evento.py"),
-    "data/raw/.gitkeep": ("Carpeta vacía", "Marca dónde irían los datos (vacía, sin datos)"),
     "docs/CAMBIOS_REVISION.md": ("Notas", "Huecos encontrados en la revisión y cómo se corrigieron, con efecto medido"),
     "docs/ESCENARIOS.md": ("Notas", "Qué hacer si los datos vienen distintos (formatos, faltantes, restricciones)"),
     "docs/GUIA_EJECUCION.md": ("Notas", "Instalación y ejecución paso a paso en Windows, macOS y Linux"),
@@ -121,6 +120,8 @@ def main():
         if src.suffix.lower() in PROHIBIDAS:
             excluidos.append(rel)
             continue
+        if rel.startswith("data/") or "__pycache__" in rel or src.suffix.lower() in (".pyc", ".pyo"):
+            continue      # ninguna carpeta data/ ni binarios dentro de la base (el control busca datos)
         dst = destino / rel
         dst.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(src, dst)
