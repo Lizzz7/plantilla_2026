@@ -68,6 +68,7 @@ Son menos variables que en las plantillas grandes y, aun así, mide más: menos 
 
 Instalar lo extra: `pip install statsmodels xgboost catboost "pulp<3"` (si algo no se instala, esos modelos se saltan solos).
 
+
 ## Índice de apuntes
 
 | Archivo | De qué trata |
