@@ -6,3 +6,4 @@ salidas/
 experimentos/variante/
 __pycache__/
 *.parquet
+*.csv
