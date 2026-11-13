@@ -1,9 +1,0 @@
-data/raw/*
-!data/raw/.gitkeep
-data/work/
-data/tmp_duckdb/
-salidas/
-experimentos/variante/
-__pycache__/
-*.parquet
-*.csv

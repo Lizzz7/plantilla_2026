@@ -14,6 +14,7 @@ kit_datafest/
 │   ├── extra/               PLAN B y ampliaciones (no hacen falta para el flujo básico)
 │   │   ├── metricas.py           todas las métricas (AUC-PR, KS, F1, Brier, MAE, WAPE...)
 │   │   ├── mas_modelos.py        7 modelos + ensamble, misma validación, métrica a elección
+│   │   ├── uno_o_varios.py       ¿un modelo global o uno por zona/segmento? (lo mide)
 │   │   └── limpieza_pandas.py    limpieza alternativa si DuckDB falla + diagnóstico por columna
 │   ├── temporal/            si el reto es en el tiempo
 │   │   ├── datos_temporales.py   datos de práctica (retiros diarios por agencia)
@@ -100,3 +101,7 @@ Lo honesto, y lo que además los protege en la evaluación técnica:
 | `16_si_la_limpieza_falla.md` | escalera de soluciones y plan B en pandas |
 | `17_series_de_tiempo.md` | backtest, naive, Holt-Winters, ARIMA/SARIMA, LightGBM con rezagos, varios cortes |
 | `18_optimizacion_restricciones.md` | priorizar con capacidad, cupos, mínimos, presupuesto y ejecutivos |
+| `19_modelos_casos.md` | 11 casos (propensión, monto, fuga, riesgo, pronóstico, segmentación...): modelo, métrica y script |
+| `20_uno_o_varios_modelos.md` | varios modelos en paralelo, ensamble, uno por zona vs global, dos etapas |
+
+Mapa del equipo (rol, script, contratos entre pasos, horario del evento): **`../GLOBAL_EQUIPO.md`**.
