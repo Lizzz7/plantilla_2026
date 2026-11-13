@@ -25,7 +25,7 @@ y = tr.target
 X_cols = [c for c in tr.columns if c not in ("id", "target", "target_monto")]
 CAT = [c for c in X_cols if not pd.api.types.is_numeric_dtype(tr[c])]   # texto = categoría
 NUM = [c for c in X_cols if c not in CAT]
-for df in (tr, te):                                   # categorías como texto; las raras quedan "NA"
+for df in (tr, te):                                   # categorías como texto; los NULOS pasan a "NA"
     df[CAT] = df[CAT].fillna("NA").astype(str)
 
 
@@ -60,16 +60,19 @@ pred = {"regla": signo * te[mejor].fillna(tr[mejor].median()),
         "logistica": logistica.predict_proba(te[X_cols])[:, 1],
         "lightgbm": arboles.predict_proba(Xte_lgb)[:, 1]}
 
-hay_examen = te.target.nunique() == 2
+hay_examen = "target" in te and te["target"].nunique() == 2      # [FIX 1] en el evento real te puede NO traer target
 res = pd.DataFrame({"gini_oof": {k: gini(y, v) for k, v in oof.items()}})
 if hay_examen:
     res["gini_examen"] = {k: gini(te.target, v) for k, v in pred.items()}
 print(res.round(3))
 
 # 3) elegir: el mejor OOF; si el más simple está a menos de 0.005, gana el simple
-elegido = next(m for m in ["regla", "logistica", "lightgbm"] if res.gini_oof[m] >= res.gini_oof.max() - 0.005)
-if elegido == "regla":
-    elegido = "logistica"                               # la regla no da probabilidades
+# [FIX 2] la regla no da probabilidades: se elige SOLO entre modelos; la regla queda como vara de comparación
+modelos = ["logistica", "lightgbm"]                                  # de simple a complejo
+mejor_modelo = res.gini_oof[modelos].max()
+elegido = next(m for m in modelos if res.gini_oof[m] >= mejor_modelo - 0.005)
+if res.gini_oof["regla"] >= res.gini_oof.max() - 0.005:
+    print("[!] la regla simple empata con los modelos: decirlo en la presentación")
 print(f"elegido: {elegido}   (regla simple = ordenar por {mejor})")
 if res.gini_oof.max() > 0.8:
     print("[!!] Gini > 0.8: sospechen una fuga antes de celebrar")
@@ -92,8 +95,14 @@ plt.tight_layout()
 plt.savefig(S / "4_deciles.png", dpi=120)
 
 modelo, Xi = (logistica, tr[X_cols]) if elegido == "logistica" else (arboles, Xtr_lgb)
-pi = permutation_importance(modelo, Xi.sample(3000, random_state=1), y.loc[Xi.sample(3000, random_state=1).index],
-                            scoring="roc_auc", n_repeats=3, random_state=1)
+# [FIX 3] importancia en datos que el modelo NO vio (examen) si existen; si no, en train (optimista: decirlo)
+if hay_examen:
+    Xi, yi = (te[X_cols], te.target) if elegido == "logistica" else (Xte_lgb, te.target)
+else:
+    print("[!] sin examen: la importancia se mide en train (puede ser optimista)")
+    yi = y
+muestra = Xi.sample(min(3000, len(Xi)), random_state=1)            # [FIX 4] no falla con menos de 3000 filas
+pi = permutation_importance(modelo, muestra, yi.loc[muestra.index], scoring="roc_auc", n_repeats=3, random_state=1)
 imp = pd.Series(2 * pi.importances_mean, index=X_cols).sort_values().tail(10)
 print("variables que más pesan:\n", imp.sort_values(ascending=False).round(4))
 fig, ax = plt.subplots(figsize=(7, 4))                 # figura nueva (si no, se dibuja encima de la anterior)
