@@ -1,4 +1,4 @@
-# Inventario de la base de conocimiento
+# Inventario de la base de conocimiento.
 
 > Nota sobre autoría: el código y los apuntes de `kit_datafest 3/` se prepararon ANTES del evento.
 > Cada archivo lo revisó y aprobó la
