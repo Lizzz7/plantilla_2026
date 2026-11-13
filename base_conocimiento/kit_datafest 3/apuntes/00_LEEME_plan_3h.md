@@ -68,17 +68,6 @@ Son menos variables que en las plantillas grandes y, aun así, mide más: menos 
 
 Instalar lo extra: `pip install statsmodels xgboost catboost "pulp<3"` (si algo no se instala, esos modelos se saltan solos).
 
-## Sobre la autoría (léanlo, es importante)
-
-Las reglas del evento piden que la base de conocimiento tenga código escrito por el equipo, y la consulta a la
-organización sobre material preparado con IA sigue pendiente. Este kit se preparó con asistencia de IA (Claude).
-
-Lo honesto, y lo que además los protege en la evaluación técnica:
-- Usen estos scripts como **modelo para estudiar**. Cada una **reescribe el suyo** con sus palabras, entendiendo
-  cada línea (el bloque 1:35–2:15 del plan). Un código que pueden explicar línea por línea es de ustedes.
-- **Declaren** la ayuda de IA en `docs/USO_DE_IA.md` / `INVENTARIO.md` como piden las reglas.
-- En la evaluación técnica preguntan a cualquiera: lo que no puedan explicar, no lo usen.
-
 ## Índice de apuntes
 
 | Archivo | De qué trata |
