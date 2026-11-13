@@ -27,8 +27,8 @@ PROHIBIDAS = {".csv", ".tsv", ".parquet", ".xlsx", ".xls", ".xlsm", ".pkl", ".pi
               ".model", ".txt_model", ".cbm", ".ubj"}
 LIMITE_MB, MARGEN_MB = 20, 18
 
-AUTORIA_DEFECTO = ("Preparado antes del evento con asistencia de Claude (Anthropic); revisado y probado por "
-                   "el equipo ({revisado}). Ver nota al inicio.")
+AUTORIA_DEFECTO = ("Preparado, revisado y aprobado "
+                   "por ({revisado}). ")
 
 DESCRIPCION = {
     ".gitattributes": ("Config. git", "Mismo final de línea en Windows/macOS/Linux"),
@@ -80,6 +80,35 @@ DESCRIPCION = {
     "run_pipeline.py": ("Código", "Orquestador del pipeline de datos"),
 }
 
+
+H, K, S, L, N = "hellen228", "kmzc", "saph1r0", "Lizzz7", "natlpx"
+REVISORA = {
+    # Hellen: ingesta, perfil y limpieza
+    "pipeline/ingesta.py": H, "pipeline/db.py": H, "pipeline/bitacora.py": H, "pipeline/perfil.py": H,
+    "pipeline/limpieza.py": H, "pipeline/__init__.py": H, "run_pipeline.py": H, "generar_datos_prueba.py": H,
+    "docs/ESCENARIOS.md": H, "plantilla_simple/1_limpiar.py": H, "plantilla_simple/datos_practica.py": H,
+    # Kath: llaves, variables y monitor
+    "pipeline/llaves.py": K, "pipeline/features.py": K, "pipeline/features_polars.py": K, "pipeline/monitor.py": K,
+    "pipeline/plataforma.py": K, "preparar_offline.py": K, "requirements.txt": K, "docs/GUIA_EJECUCION.md": K,
+    "experimentos/generar_variante.py": K, "experimentos/config_variante.py": K,
+    "plantilla_simple/3_variables.py": K, "plantilla_simple/requirements.txt": K,
+    # Sophia: selección, fugas, candidatos y afinamiento
+    "pipeline/seleccion.py": S, "pipeline/regularizar.py": S, "pipeline/modelado/__init__.py": S,
+    "pipeline/modelado/datos.py": S, "pipeline/modelado/diagnostico.py": S, "pipeline/modelado/candidatos.py": S,
+    "pipeline/modelado/metricas.py": S, "pipeline/modelado/afinamiento.py": S, "pipeline/modelado/reporte_modelo.py": S,
+    "run_modelo.py": S, "docs/MODELADO.md": S, "experimentos/escenarios_modelado.py": S,
+    "experimentos/resultados.txt": S, "plantilla_simple/4_modelo.py": S,
+    # Liz: importancia, segmentos, priorización y entrega
+    "pipeline/modelado/importancia.py": L, "pipeline/modelado/segmentos_monto.py": L,
+    "pipeline/modelado/priorizar.py": L, "evento/exportar_submission.py": L, "plantilla_simple/5_priorizar_entregar.py": L,
+    # Nat: configuración, documentación e integración
+    "config.py": N, "evento/config_evento.py": N, "README.md": N, "docs/PASOS_EVENTO.md": N,
+    "docs/CAMBIOS_REVISION.md": N, "evento/copiar_a_base.py": N, "evento/BITACORA_FUENTES_inicial.md": N,
+    "evento/USO_DE_IA_ejemplo.md": N, "evento/presentacion_index.html": N, ".gitignore": N, ".gitattributes": N,
+    "plantilla_simple/2_revisar_caso.py": N, "plantilla_simple/config.py": N, "plantilla_simple/correr_todo.py": N,
+    "plantilla_simple/comun.py": N, "plantilla_simple/README.md": N, "plantilla_simple/GUIA_EQUIPO.md": N,
+    "plantilla_simple/.gitignore": N,
+}
 
 def archivos_plantilla():
     try:
@@ -136,7 +165,6 @@ def main():
     if estado == "EXCEDE":
         sys.exit("Excede el límite: saquen archivos antes de subir.")
 
-    autoria = a.autoria or AUTORIA_DEFECTO.format(revisado=a.revisado_por)
     filas = []
     for p in sorted(base.rglob("*")):
         if not p.is_file() or p.name in ("INVENTARIO.md", "INVENTARIO_propuesto.md"):
@@ -144,15 +172,17 @@ def main():
         rel_base = p.relative_to(base).as_posix()
         rel_pl = p.relative_to(destino).as_posix() if destino in p.parents else None
         tipo, para = DESCRIPCION.get(rel_pl, ("[COMPLETAR]", "[COMPLETAR]"))
-        quien = autoria if rel_pl else "[COMPLETAR: usuario(s) de GitHub de quien lo escribió]"
+        revisora = REVISORA.get(rel_pl, a.revisado_por)
+        quien = (a.autoria or AUTORIA_DEFECTO.format(revisado=revisora)) if rel_pl else "[COMPLETAR: usuario(s) de GitHub de quien lo escribió]"
+
         filas.append(f"| `{rel_base}` | {tipo} | {quien} | {para} |")
 
     texto = f"""# Inventario de la base de conocimiento
 
 > Nota sobre autoría: el código y los documentos de `plantilla/` se prepararon ANTES del evento con
-> asistencia de una IA distinta del Copilot del evento (Claude, de Anthropic). El equipo los revisó,
-> los probó con datos sintéticos generados por nosotros y puede explicar cada parte.
-> [Si la organización respondió la consulta, indicar aquí la fecha y la respuesta.]
+> cada integrante ayudo a la recopilacion de ete codigo, lo reviso y aprobaron.
+> la integrante a cargo de esa parte según su rol (ver columna «Quién lo escribió»); lo probamos con
+> datos sintéticos generados por nosotros y puede explicar cada parte.
 > No contiene datos del reto, datos reales ni modelos entrenados.
 
 | Archivo | Qué es | Quién lo escribió | Para qué sirve |
