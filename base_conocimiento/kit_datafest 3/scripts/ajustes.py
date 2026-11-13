@@ -1,7 +1,7 @@
 # AJUSTES DEL RETO: lo único que se cambia cuando llegan los datos (lo cuida Nat).
 # Nombres en minúsculas, sin tildes, con _ (el paso 1 imprime los nombres reales).
 
-CARPETA_DATOS = "datos"
+CARPETA_DATOS = "data"
 CARPETA_SALIDAS = "salidas"
 
 CORTE = "2025-07-01"           # día de decidir: variables ANTES, target DESPUÉS

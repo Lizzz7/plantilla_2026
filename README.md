@@ -1,0 +1,1 @@
+Repositorio modelo para el evento.
