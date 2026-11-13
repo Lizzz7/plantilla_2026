@@ -1,9 +1,0 @@
-# NUNCA subir datos del caso ni salidas generadas
-datos/
-salidas/
-*.parquet
-*.csv
-*.xlsx
-*.xls
-__pycache__/
-.venv/
