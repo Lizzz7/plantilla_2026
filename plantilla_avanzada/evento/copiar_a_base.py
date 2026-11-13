@@ -27,9 +27,6 @@ PROHIBIDAS = {".csv", ".tsv", ".parquet", ".xlsx", ".xls", ".xlsm", ".pkl", ".pi
               ".model", ".txt_model", ".cbm", ".ubj"}
 LIMITE_MB, MARGEN_MB = 20, 18
 
-AUTORIA_DEFECTO = ("Preparado, revisado y aprobado "
-                   "por ({revisado}). ")
-
 DESCRIPCION = {
     ".gitattributes": ("Config. git", "Mismo final de línea en Windows/macOS/Linux"),
     ".gitignore": ("Config. git", "Impide subir data/, salidas/ y parquet"),
@@ -176,37 +173,6 @@ def main():
         quien = (a.autoria or AUTORIA_DEFECTO.format(revisado=revisora)) if rel_pl else "[COMPLETAR: usuario(s) de GitHub de quien lo escribió]"
 
         filas.append(f"| `{rel_base}` | {tipo} | {quien} | {para} |")
-
-    texto = f"""# Inventario de la base de conocimiento
-
-> Nota sobre autoría: el código y los documentos de `plantilla/` se prepararon ANTES del evento con
-> cada integrante ayudo a la recopilacion de ete codigo, lo reviso y aprobaron.
-> la integrante a cargo de esa parte según su rol (ver columna «Quién lo escribió»); lo probamos con
-> datos sintéticos generados por nosotros y puede explicar cada parte.
-> No contiene datos del reto, datos reales ni modelos entrenados.
-
-| Archivo | Qué es | Quién lo escribió | Para qué sirve |
-|---|---|---|---|
-""" + "\n".join(filas) + "\n"
-    inv = base / "INVENTARIO.md"
-    if inv.exists() and "plantilla/" not in inv.read_text(encoding="utf-8"):
-        inv = base / "INVENTARIO_propuesto.md"
-        print("Ya existe un INVENTARIO.md oficial: escribí INVENTARIO_propuesto.md. Copien sus filas al formato "
-              "oficial y borren el propuesto antes del commit.")
-    inv.write_text(texto, encoding="utf-8")
-    print(f"Inventario: {inv}  ({len(filas)} archivos; completen los [COMPLETAR])")
-
-    print(f"""
-Siguientes pasos (cada una con SU cuenta y el correo anónimo configurado):
-  cd "{repo}"
-  git checkout -b <usuario>/base
-  git add base_conocimiento
-  git status                      # revisen: nada de data/ ni .csv
-  git commit -m "base: plantilla e inventario"
-  git push -u origin <usuario>/base
-  -> Pull Request en GitHub; la integradora lo fusiona ANTES de las 13:30 del viernes (cierre 14:00).
-  -> Comprueben en github.com/Datafest-BCP/<equipo>/tree/main/base_conocimiento""")
-
 
 if __name__ == "__main__":
     main()

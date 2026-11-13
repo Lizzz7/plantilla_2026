@@ -25,6 +25,3 @@ python temporal/datos_temporales.py && python temporal/pronostico.py && python t
 python temporal/varios_cortes.py
 python optimizacion/priorizar_restricciones.py demo
 ```
-
-Preparado con asistencia de IA (Claude) como material de estudio. Cada integrante reescribe y entiende su script;
-declaren la ayuda de IA según las reglas del evento.

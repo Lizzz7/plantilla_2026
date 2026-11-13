@@ -16,4 +16,4 @@ Copien estas filas al formato de `docs/BITACORA_FUENTES.md` del repo del evento:
 | https://coin-or.github.io/pulp/ | Optimización con restricciones (asignación por capacidad y zona) | `pipeline/modelado/priorizar.py` |
 | https://doi.org/10.1080/01621459.1983.10478017 | Duan (1983), "smearing": corregir la media al volver de log a soles | `pipeline/modelado/segmentos_monto.py` |
 | [COMPLETAR] Fuente usada para PSI e IV (scoring crediticio) | Estabilidad entre periodos (PSI) y poder predictivo (IV) | `pipeline/seleccion.py` |
-| — | La plantilla se preparó con asistencia de Claude (Anthropic) antes del evento (ver `base_conocimiento/INVENTARIO.md`) | `base_conocimiento/plantilla/` |
+
